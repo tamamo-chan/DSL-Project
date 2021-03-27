@@ -20,13 +20,13 @@ Start:
 // Decisions: accept, reject, maybe(recommend_accept, recommend_reject, unsure)
 
 Decision:
-	text=ID ("," next=Decision)? | text=ID "(" nested=Decision ")" ("," next=Decision)?
+	text+=ID ("," next=Decision)? | text+=ID "(" nested=Decision ")" ("," next=Decision)?
 ;
 
 // Input: int credit, bool loans, bool loyal_customer, bool CE
 
 Input:
-	type=(InputInt | InputString | InputBool) ("," next=Input)? 
+	type+=(InputInt | InputString | InputBool) ("," next=Input)? 
 ;
 
 InputInt:
@@ -64,7 +64,7 @@ Rules:
 ;
 
 RuleType:
-	INT | ID
+	{RuleTypeInt} value=INT | {RuleTypeID} name=ID
 ;
 
 Operator:
@@ -72,13 +72,13 @@ Operator:
 ;
 
 Conclusion:
-	left=RuleType operator=Operator right=RuleType ":" decision=Decision 
+	left=RuleType operator=Operator right=RuleType ":" decision=ID 
 	(next=Conclusion)? | 
 	
 	ConclusionNested
 	(next=Conclusion)? |
 	
-	"else:" left=ID 
+	"else:" left=RuleType
 ;
 
 ConclusionNested:
