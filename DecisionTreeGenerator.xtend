@@ -15,6 +15,11 @@ import org.eclipse.emf.ecore.EObject
 import sdu.mmmi.tamamo.decisionTree.InputInt
 import sdu.mmmi.tamamo.decisionTree.InputString
 import sdu.mmmi.tamamo.decisionTree.Parameter
+import sdu.mmmi.tamamo.decisionTree.Rules
+import sdu.mmmi.tamamo.decisionTree.RuleTypeInt
+import sdu.mmmi.tamamo.decisionTree.GreaterThan
+import sdu.mmmi.tamamo.decisionTree.LessThan
+import sdu.mmmi.tamamo.decisionTree.GreaterEqual
 
 /**
  * Generates code from your model files on save.
@@ -27,14 +32,18 @@ class DecisionTreeGenerator extends AbstractGenerator {
 		val Decision decModel = resource.allContents.filter(Decision).next
 		val Input inputModel = resource.allContents.filter(Input).next
 		val Parameter parameterModel = resource.allContents.filter(Parameter).next;
+		val Rules rulesModel = resource.allContents.filter(Rules).next
+		
 		System::out.println("Anything")
 		inputModel.display
 		decModel.display
 		parameterModel.display
+		rulesModel.display
+		
 		inputModel.generateInputFile(fsa)
 		decModel.generateDecisionFile(fsa)
 		parameterModel.generateParameterFile(fsa)
-		
+		rulesModel.generateRulesFile(fsa)
 	}
 	
 	def void generateParameterFile(Parameter param, IFileSystemAccess2 fsa) {
@@ -121,19 +130,90 @@ public boolean get«input.value.name.toFirstUpper»() {
 «IF input.next!==null»«generateClassVariables(input.next)»«ENDIF»'''}
 	
 	
+	
 	def void generateDecisionFile(Decision decision, IFileSystemAccess2 fsa){
 		fsa.generateFile("Decision.java",generateDecision(decision))
 	}
 	
 	def  generateDecision(Decision decision){
 		'''
-		import javautil.*
-		public class Decision {
-			public String text;
-			«IF decision.nested!==null» «ELSE»Public List<Decision> nested; «ENDIF»
-			public Decision next;
+		import java.util.list;
+		import java.util.ArrayList;
+		public class _Decision {
+			public String _text;
+			«IF decision.nested!==null» «ELSE»public List<Decision> _nested; «ENDIF»
+			public Decision _next;
+			public Decision(String text){
+			        _text = text;
+			    }
+			public String getText() {
+			        return _text;
+			    }
+			
+			«IF decision.nested!==null» «ELSE»public List<Decision> getNested() {
+			        return _nested;
+			    }
+			«ENDIF»
+			    public Decision getNext() {
+			        return _next;
+			    } 
+		  public void setNext(Decision decision) {
+		        _next = decision;
+		    }
+		
+		    public void setNested(Decision decision) {
+		        if (_nested != null) {
+		            _nested.add(decision);
+		        } else {
+		            _nested = new ArrayList<Decision>();
+		        }
+		    }
+		
+		    public void setText(String value) {
+		        _text = value;
+		    }
+		
 		}
 		'''
+	}
+	
+	
+	def void generateRulesFile(Rules rules, IFileSystemAccess2 fsa){
+		fsa.generateFile("Rules.java",generateRules(rules))
+	}
+	
+	def generateRules(Rules rules) {
+		'''
+		public class Rules {
+			«IF rules.left instanceof RuleTypeInt »public int «ELSE»public String «ENDIF» _left;
+			«IF rules.right!==null» 
+			«ELSE»	
+					«IF rules.operator instanceof GreaterThan» «generateRuleGraterThan(rules)»
+					«ELSEIF rules.operator instanceof LessThan» «generateLessThan(rules)»
+					«ELSEIF rules.operator instanceof GreaterEqual»«generateGreaterEqual(rules)»
+					«ELSE» «generateLessEqual(rules)»
+					«ENDIF»
+			«ENDIF»
+			«IF rules.points!=0»public int _points«ENDIF»
+		}
+		
+		'''
+	}
+	
+	def generateLessEqual(Rules rules) {
+		throw new UnsupportedOperationException("TODO: auto-generated method stub")
+	}
+	
+	def generateGreaterEqual(Rules rules) {
+		throw new UnsupportedOperationException("TODO: auto-generated method stub")
+	}
+	
+	def generateLessThan(Rules rules) {
+		throw new UnsupportedOperationException("TODO: auto-generated method stub")
+	}
+	
+	def generateRuleGraterThan(Rules rules) {
+		throw new UnsupportedOperationException("TODO: auto-generated method stub")
 	}
 	
 	
