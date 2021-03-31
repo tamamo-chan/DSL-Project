@@ -61,11 +61,11 @@ int «param.name»«IF param.next !== null», «generateConstructor(param.next)�
 private int «param.name» = «param.value»;
 
 public int get«param.name.toFirstUpper»() {
-	return this.value;
+	return this.«param.name»;
 }
 
 public void set«param.name.toFirstUpper»(int value) {
-	this.value = value;
+	this.«param.name» = value;
 }
 
 «IF param.next !== null»«generateClassVariables(param.next)»«ENDIF»'''}
