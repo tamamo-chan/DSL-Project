@@ -105,7 +105,7 @@ public class Input {
 	
 	
 	def CharSequence generateAssignment(Input input) {'''
-this.«input.value.name.toFirstUpper» = «input.value.name»;
+this.«input.value.name» = «input.value.name»;
 «IF input.next !== null»«generateAssignment(input.next)»«ENDIF»'''}
 	
 	def CharSequence generateClassVariables(Input input) {'''
