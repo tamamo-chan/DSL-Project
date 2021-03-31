@@ -22,7 +22,7 @@ import sdu.mmmi.tamamo.decisionTree.Parameter
  * See https://www.eclipse.org/Xtext/documentation/303_runtime_concepts.html#code-generation
  */
 class DecisionTreeGenerator extends AbstractGenerator {
-	
+
 	override void doGenerate(Resource resource, IFileSystemAccess2 fsa, IGeneratorContext context) {
 		val Decision decModel = resource.allContents.filter(Decision).next
 		val Input inputModel = resource.allContents.filter(Input).next
@@ -71,23 +71,6 @@ public void set«param.name.toFirstUpper»(int value) {
 «IF param.next !== null»«generateClassVariables(param.next)»«ENDIF»'''}
 	
 	
-	
-	def void generateInputFile(Input input,IFileSystemAccess2 fsa){
-		fsa.generateFile("Input.java",generateInput(input))
-	}
-	
-	def CharSequence generateInput(Input input) {'''
-public class Input {
-	
-	«generateClassVariables(input)»
-	
-	public Input(«generateConstructor(input)») {
-		«generateAssignment(input)»
-	}	
-
-}
-'''}
-
 
 	def CharSequence generateConstructor(Input input) {'''
 «IF input.value instanceof InputInt»int«ELSEIF input.value instanceof InputString»String«ELSE»boolean«ENDIF»''' +
@@ -95,31 +78,23 @@ public class Input {
 	
 	
 	
-	def CharSequence generateAssignment(Input input) {'''
-this.«input.value.name.toFirstUpper» = «input.value.name»;
-«IF input.next !== null»«generateAssignment(input.next)»«ENDIF»'''}
 	
-	def CharSequence generateClassVariables(Input input) {'''
-private « IF input.value instanceof InputInt»int «input.value.name»;
-
-public int get«input.value.name.toFirstUpper»() {
-	return this.«input.value.name»;
-}
-«ELSEIF input.value instanceof InputString»String «input.value.name»;
-
-public String get«input.value.name.toFirstUpper»() {
-	return this.«input.value.name»;
-}
-
-«ELSE»boolean «input.value.name»;
-
-public boolean get«input.value.name.toFirstUpper»() {
-	return this.«input.value.name»;
-}
-«ENDIF»
-
-«IF input.next!==null»«generateClassVariables(input.next)»«ENDIF»'''}
+	def void generateInputFile(Input input,IFileSystemAccess2 fsa){
+		fsa.generateFile("Input.java",generateInput(input))
+	}
 	
+	def generateInput(Input input) {
+		'''public class Input {
+			public « IF input.value==InputInt»int 
+				«ELSEIF input.value==InputString»String
+				«ELSE»Boolean
+				«ENDIF» name;
+				
+				«IF input.next!==null» «ELSE»Public Input next; «ENDIF»
+				
+			}
+		}'''
+	}
 	
 	def void generateDecisionFile(Decision decision, IFileSystemAccess2 fsa){
 		fsa.generateFile("Decision.java",generateDecision(decision))
@@ -127,11 +102,39 @@ public boolean get«input.value.name.toFirstUpper»() {
 	
 	def  generateDecision(Decision decision){
 		'''
-		import javautil.*
-		public class Decision {
-			public String text;
-			«IF decision.nested!==null» «ELSE»Public List<Decision> nested; «ENDIF»
-			public Decision next;
+		import java.util.list;
+		import java.util.ArrayList;
+		public class _Decision {
+			public String _text;
+			«IF decision.nested!==null» «ELSE»public List<Decision> _nested; «ENDIF»
+			public Decision _next;
+			public String getText() {
+			        return _text;
+			    }
+			
+			«IF decision.nested!==null» «ELSE»public List<Decision> getNested() {
+			        return _nested;
+			    }
+			«ENDIF»
+			    public Decision getNext() {
+			        return _next;
+			    } 
+		  public void setNext(Decision decision) {
+		        _next = decision;
+		    }
+		
+		    public void setNested(Decision decision) {
+		        if (_nested != null) {
+		            _nested.add(decision);
+		        } else {
+		            _nested = new ArrayList<Decision>();
+		        }
+		    }
+		
+		    public void setText(String value) {
+		        _text = value;
+		    }
+		
 		}
 		'''
 	}
@@ -143,31 +146,5 @@ public boolean get«input.value.name.toFirstUpper»() {
 		System::out.println("Dump of model:")
 		res.save(System.out,null)
 	}
-
-//	override void doGenerate(Resource resource, IFileSystemAccess2 fsa, IGeneratorContext context) {
-//
-//		val test = resource.allContents.
-//		
-//
-//	}
-//	
-//	
-//	def CharSequence generateInput(Input input) {
-//		var start = '''
-//		
-//		public class Input {
-//		
-//		    private «input.getValue.getType» «input.getValue.getName»;
-//		
-//		    public type get«input.getValue.getName»() {
-//		
-//		        return «input.getValue.getName»;
-//		
-//		    }''';
-//		    
-//		    start = start + '''test''';
-//		    
-//		return start;
-//	}
 	
 }
