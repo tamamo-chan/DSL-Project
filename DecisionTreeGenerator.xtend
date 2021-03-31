@@ -108,6 +108,10 @@ public void set«param.name.toFirstUpper»(int value) {
 			public String _text;
 			«IF decision.nested!==null» «ELSE»public List<Decision> _nested; «ENDIF»
 			public Decision _next;
+			
+			public Decision(String text){
+			        _text = text;
+			    }
 			public String getText() {
 			        return _text;
 			    }
