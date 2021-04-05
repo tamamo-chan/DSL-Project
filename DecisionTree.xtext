@@ -30,7 +30,7 @@ Input:
 ;
 
 InputType:
-	(InputInt | InputString | InputBool)
+	InputInt | InputString | InputBool
 ;
 
 InputInt:
@@ -67,12 +67,12 @@ Rules:
 	(next=Rules)?
 ;
 
-RuleType:
-	{RuleTypeInt} value=INT | {RuleTypeID} name=ID
+Operator:
+	{GreaterThan} type='>' | {LessThan} type='<' | {GreaterEqual} type='>=' | {LessEqual} type='<='	
 ;
 
-Operator:
-	{GreaterThan} '>' | {LessThan} '<' | {GreaterEqual} '>=' | {LessEqual} '<='	
+RuleType:
+	{RuleTypeInt} value=INT | {RuleTypeID} name=ID
 ;
 
 Conclusion:
@@ -82,6 +82,10 @@ Conclusion:
 	ConclusionNested
 	(next=Conclusion)? |
 	
+	ConclusionElse
+;
+
+ConclusionElse:
 	"else:" left=RuleType
 ;
 
