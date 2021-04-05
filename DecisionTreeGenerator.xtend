@@ -20,6 +20,10 @@ import sdu.mmmi.tamamo.decisionTree.RuleTypeInt
 import sdu.mmmi.tamamo.decisionTree.GreaterThan
 import sdu.mmmi.tamamo.decisionTree.LessThan
 import sdu.mmmi.tamamo.decisionTree.GreaterEqual
+import sdu.mmmi.tamamo.decisionTree.Conclusion
+import sdu.mmmi.tamamo.decisionTree.ConclusionNested
+import sdu.mmmi.tamamo.decisionTree.RuleTypeID
+import sdu.mmmi.tamamo.decisionTree.ConclusionElse
 
 /**
  * Generates code from your model files on save.
@@ -33,22 +37,89 @@ class DecisionTreeGenerator extends AbstractGenerator {
 		val Input inputModel = resource.allContents.filter(Input).next
 		val Parameter parameterModel = resource.allContents.filter(Parameter).next;
 		val Rules rulesModel = resource.allContents.filter(Rules).next
+		val Conclusion conclusionModel = resource.allContents.filter(Conclusion).next
 		
 		System::out.println("Anything")
 		inputModel.display
 		decModel.display
 		parameterModel.display
 		rulesModel.display
+		conclusionModel.display
 		
 		inputModel.generateInputFile(fsa)
 		decModel.generateDecisionFile(fsa)
 		parameterModel.generateParameterFile(fsa)
 		rulesModel.generateRulesFile(fsa)
+		conclusionModel.generateConclusionFile(fsa)
 	}
+	
+	def void generateConclusionFile(Conclusion conc, IFileSystemAccess2 fsa) {
+		fsa.generateFile("Conclusion.java", generateConclusion(conc))
+	}
+	
+	def CharSequence generateConclusion(Conclusion conclusion) {'''	
+import java.util.List;
+
+public class Conclusion {
+	
+	public Decision begin(Parameter param, List<Decision> list) {
+	
+		«generateBegin(conclusion)»
+	
+	}
+}
+
+
+'''}
+	
+	def CharSequence generateBegin(Conclusion conclusion) {'''
+«IF conclusion instanceof ConclusionElse»
+for (Decision decision : list) {
+	if (decision._text.equals("«(conclusion.getLeft as RuleTypeID).getName»")) {
+		return decision;
+	}
+}
+
+return null;
+«ELSEIF conclusion instanceof ConclusionNested»
+for (Decision decision : list) {
+	if (decision._text.equals("«conclusion.getParent»")) {
+		list = decision._nested;
+	}
+}
+
+«IF conclusion.getNested !== null»«generateBegin(conclusion.getNested)»«ENDIF»«ELSE»
+if («generateComparison(conclusion)») {
+		for (Decision decision : list) {
+			if (decision._text.equals("«conclusion.getDecision»")) {
+				return decision;
+			}
+		}
+	}
+	
+«IF conclusion.getNext !== null»«generateBegin(conclusion.getNext)»«ENDIF»«ENDIF»
+'''}
+
+
+
+
+	def CharSequence generateComparison(Conclusion conclusion) {'''
+«IF conclusion.getLeft instanceof RuleTypeID»param.get«(conclusion.getLeft as RuleTypeID).getName.toFirstUpper»()«ELSE»«(conclusion.getLeft as RuleTypeInt).getValue»«ENDIF»'''+
+''' «conclusion.getOperator.getType» «IF conclusion.getRight instanceof RuleTypeID»param.get«(conclusion.getRight as RuleTypeID).getName.toFirstUpper»() «ELSE»«(conclusion.getRight as RuleTypeInt).getValue»«ENDIF»'''}
+
+
+
+
+
 	
 	def void generateParameterFile(Parameter param, IFileSystemAccess2 fsa) {
 		fsa.generateFile("Parameter.java", generateParameter(param))
 	}
+	
+	
+	
+	
+	
 	
 	def CharSequence generateParameter(Parameter parameter) {'''
 public class Parameter {
@@ -63,21 +134,29 @@ public class Parameter {
 this.«param.name» = «param.name»;
 «IF param.next !== null»«generateAssignment(param.next)»«ENDIF»'''}
 
+
+
+
 	def CharSequence generateConstructor(Parameter param) {'''
 int «param.name»«IF param.next !== null», «generateConstructor(param.next)»«ENDIF»'''} 
 
+
+
+
+
 	def CharSequence generateClassVariables(Parameter param) {'''
 private int «param.name» = «param.value»;
-
 public int get«param.name.toFirstUpper»() {
 	return this.«param.name»;
 }
-
 public void set«param.name.toFirstUpper»(int value) {
 	this.«param.name» = value;
 }
-
 «IF param.next !== null»«generateClassVariables(param.next)»«ENDIF»'''}
+
+
+
+
 	
 	
 	
@@ -93,7 +172,6 @@ public class Input {
 	public Input(«generateConstructor(input)») {
 		«generateAssignment(input)»
 	}	
-
 }
 '''}
 
@@ -110,23 +188,18 @@ this.«input.value.name» = «input.value.name»;
 	
 	def CharSequence generateClassVariables(Input input) {'''
 private « IF input.value instanceof InputInt»int «input.value.name»;
-
 public int get«input.value.name.toFirstUpper»() {
 	return this.«input.value.name»;
 }
 «ELSEIF input.value instanceof InputString»String «input.value.name»;
-
 public String get«input.value.name.toFirstUpper»() {
 	return this.«input.value.name»;
 }
-
 «ELSE»boolean «input.value.name»;
-
 public boolean get«input.value.name.toFirstUpper»() {
 	return this.«input.value.name»;
 }
 «ENDIF»
-
 «IF input.next!==null»«generateClassVariables(input.next)»«ENDIF»'''}
 	
 	
