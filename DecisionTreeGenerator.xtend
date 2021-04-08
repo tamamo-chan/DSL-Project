@@ -25,6 +25,11 @@ import sdu.mmmi.tamamo.decisionTree.ConclusionNested
 import sdu.mmmi.tamamo.decisionTree.RuleTypeID
 import sdu.mmmi.tamamo.decisionTree.ConclusionElse
 import sdu.mmmi.tamamo.decisionTree.Start
+import sdu.mmmi.tamamo.decisionTree.InputBool
+import sdu.mmmi.tamamo.decisionTree.LessEqual
+import sdu.mmmi.tamamo.decisionTree.RulesConclude
+import sdu.mmmi.tamamo.decisionTree.RulesChange
+import sdu.mmmi.tamamo.decisionTree.Subtract
 
 /**
  * Generates code from your model files on save.
@@ -59,7 +64,7 @@ class DecisionTreeGenerator extends AbstractGenerator {
 	
 	def void generateStartFile(Start start, IFileSystemAccess2 fsa) {
 
-		fsa.generateFile("Main.java", generateStart(start))
+		fsa.generateFile("decisiontree/Main.java", generateStart(start))
 	}
 
 	def generateStart(Start start) {
@@ -67,8 +72,6 @@ class DecisionTreeGenerator extends AbstractGenerator {
 			«generatePackage()»
 			
 			public class Main {
-				    private static int good = 0;
-				    private static int bad = 0;
 				    
 				    «generateHandleBool()»
 				    
@@ -88,27 +91,14 @@ class DecisionTreeGenerator extends AbstractGenerator {
 			public static void main(String[] args){
 			
 			
-			assert(args.length == 4);
+				assert(args.length == «getNumInputs(start.getInput, 1)+""»);
 			
-			        int credit = 0;
-			        try {
-			            credit = Integer.parseInt(args[0]);
-			        }
-			        catch (NumberFormatException nfe) {
-			            System.out.println("The first argument must be an integer.");
-			            System.exit(1);
-			        }
-			
-			        String testr = args[1];
-			
-			        boolean previous_loans = handleBool(args[2]);
-			
-			        String testin = args[3];
+			        «mainInput(start.getInput, 0)»
 			
 			
-			        Input input = new Input(credit, testr, previous_loans, testin);
+			        Input input = new Input(«handleInputVariable(start.getInput)»);
 			
-			        Parameter param = new Parameter(good,bad);
+			        Parameter param = new Parameter();
 					Decision acceptDecision = new Decision("«start.decision.text.findFirst[true]»");
 					
 			
@@ -132,6 +122,50 @@ class DecisionTreeGenerator extends AbstractGenerator {
 			}
 		'''
 	}
+	
+	def CharSequence handleInputVariable(Input input) {
+		'''«input.getValue.getName»«IF input.getNext !== null», «handleInputVariable(input.getNext)»«ENDIF»'''
+	}
+	
+	def int getNumInputs(Input input, int number) {
+		if (input.getNext !== null) {
+			getNumInputs(input.getNext, number+1);
+		} else {
+			return number;
+		}
+	}
+	
+	def CharSequence mainInput(Input input, int index) {
+		
+		'''«handleInput(input, index)»
+
+«IF input.getNext !== null»«mainInput(input.getNext, index+1)»«ENDIF»
+		'''
+		
+	}
+	
+	def CharSequence handleInput(Input input, int index) {
+		if (input.getValue instanceof InputInt) {
+			'''
+			int «input.getValue.getName» = 0;
+			try {
+				credit = Integer.parseInt(args[«index+''»]);
+			}
+			catch (NumberFormatException nfe) {
+				System.out.println("The first argument must be an integer.");
+				System.exit(1);
+			}
+			'''
+		} else if (input.getValue instanceof InputBool) {
+			'''
+			boolean «input.getValue.getName» = handleBool(args[«index+''»]);
+			'''
+		} else {
+			'''
+			String «(input.getValue as InputString).getName» = args[«index+''»];
+			'''
+		}
+	}
 
 	def generateHandleBool() {
 		'''
@@ -146,51 +180,95 @@ class DecisionTreeGenerator extends AbstractGenerator {
 	}
 	
 	def void generateConclusionFile(Conclusion conc, IFileSystemAccess2 fsa) {
-		fsa.generateFile("Conclusion.java", generateConclusion(conc))
+		fsa.generateFile("decisiontree/Conclusion.java", generateConclusion(conc))
 	}
 	
 	def CharSequence generateConclusion(Conclusion conclusion) {'''
-«generatePackage()»	
-import java.util.List;
+«generatePackage()»
 
+import java.util.ArrayList;
+import java.util.List;
 public class Conclusion {
 	
-	public Decision begin(Parameter param, List<Decision> list) {
+	Decision decision = new Decision();
+	
+	public List<String> begin(Parameter param, Input input) {
+		
+		Rules rule = new Rules(input, param);
+		List<String> nested = new ArrayList<>();
+		
+		String response = rule.setupRules();
+		
+		if (reponse != null) {
+			nested.add(reponse);
+			return nested;
+		}
 	
 		«generateBegin(conclusion)»
-	
 	}
 }
-
-
 '''}
-	
-	def CharSequence generateBegin(Conclusion conclusion) {'''
-«IF conclusion instanceof ConclusionElse»
-for (Decision decision : list) {
-	if (decision._text.equals("«(conclusion.getLeft as RuleTypeID).getName»")) {
-		return decision;
-	}
-}
 
-return null;
-«ELSEIF conclusion instanceof ConclusionNested»
-for (Decision decision : list) {
-	if (decision._text.equals("«conclusion.getParent»")) {
-		list = decision._nested;
-	}
-}
 
-«IF conclusion.getNested !== null»«generateBegin(conclusion.getNested)»«ENDIF»«ELSE»
-if («generateComparison(conclusion)») {
-		for (Decision decision : list) {
-			if (decision._text.equals("«conclusion.getDecision»")) {
-				return decision;
+
+	def CharSequence generateNested(Conclusion conclusion, Conclusion parent) {
+		'''
+		«IF conclusion instanceof ConclusionNested»
+		// Nested code
+		
+		if ( «generateComparison((conclusion as ConclusionNested).getNested)» ) {
+			for (String s : decision.get«(parent as ConclusionNested).getParent.toFirstUpper»().nested_values) {
+				if (s.equals("«(conclusion as ConclusionNested).getNested.getDecision»")) {
+					nested.add(s);
+				}
 			}
 		}
+		
+		«IF (conclusion as ConclusionNested).getNested.getNext !== null»
+						«generateNested((conclusion as ConclusionNested).getNested.getNext, parent)»«ENDIF»
+		«ELSEIF conclusion instanceof ConclusionElse»
+		if (nested.size() < 1) {
+			nested.add("«(conclusion.getLeft as RuleTypeID).getName»");
+		}
+		
+		return nested;
+		«ELSE»
+		if ( «generateComparison(conclusion)» ) {
+			for (String s : decision.get«(parent as ConclusionNested).getParent.toFirstUpper»().nested_values) {
+				if (s.equals("«conclusion.getDecision»")) {
+					nested.add(s);
+				}
+			}
+		}
+		
+		«IF conclusion.getNext !== null»
+								«generateNested(conclusion.getNext, parent)»«ENDIF»
+		
+		«ENDIF»
+		'''
 	}
+
+
+
+
+
+
+
+
+
+
 	
-«IF conclusion.getNext !== null»«generateBegin(conclusion.getNext)»«ENDIF»«ENDIF»
+	def CharSequence generateBegin(Conclusion conclusion) {'''
+«IF conclusion instanceof ConclusionNested»
+«generateNested(conclusion, conclusion)»
+«ELSE»
+if («generateComparison(conclusion)») {
+	nested.add(decision.get«conclusion.getDecision.toFirstUpper»());
+	return nested;
+}
+
+«IF conclusion.getNext !== null»«generateBegin(conclusion.getNext)»«ENDIF»
+«ENDIF»
 '''}
 
 
@@ -206,7 +284,7 @@ if («generateComparison(conclusion)») {
 
 	
 	def void generateParameterFile(Parameter param, IFileSystemAccess2 fsa) {
-		fsa.generateFile("Parameter.java", generateParameter(param))
+		fsa.generateFile("decisiontree/Parameter.java", generateParameter(param))
 	}
 	
 	
@@ -219,7 +297,7 @@ if («generateComparison(conclusion)») {
 public class Parameter {
 	«generateClassVariables(parameter)»
 	
-	public Parameter(«generateConstructor(parameter)») {
+	public Parameter() {
 		«generateAssignment(parameter)»
 	}
 }'''}
@@ -255,7 +333,7 @@ public void set«param.name.toFirstUpper»(int value) {
 	
 	
 	def void generateInputFile(Input input,IFileSystemAccess2 fsa){
-		fsa.generateFile("folder/Input.java",generateInput(input))
+		fsa.generateFile("decisiontree/Input.java",generateInput(input))
 	}
 	
 	def CharSequence generateInput(Input input) {'''
@@ -300,7 +378,7 @@ public boolean get«input.value.name.toFirstUpper»() {
 	
 	
 	def void generateDecisionFile(Decision decision, IFileSystemAccess2 fsa){
-		fsa.generateFile("Decision.java",generateDecision(decision))
+		fsa.generateFile("decisiontree/Decision.java",generateDecision(decision))
 	}
 	
 	def  generateDecision(Decision decision){
@@ -349,7 +427,7 @@ public boolean get«input.value.name.toFirstUpper»() {
 	
 	
 		def void generateRulesFile(Rules rules, IFileSystemAccess2 fsa) {
-		fsa.generateFile("Rules.java", generateRules(rules))
+		fsa.generateFile("decisiontree/Rules.java", generateRules(rules))
 	}
 
 	def generateRules(Rules rules) {
@@ -357,96 +435,48 @@ public boolean get«input.value.name.toFirstUpper»() {
 			«generatePackage()»
 			
 			public class Rules {
-				«IF rules.left instanceof RuleTypeInt »public int «ELSE»public String «ENDIF» _left;
+				Parameter param = null;
+				Input input = null;
+				Decision decision = new Decision();
 				
-				«IF rules.left instanceof RuleTypeInt »public int «ELSE»public String «ENDIF» getLeft() {
-					return _left;
-				}
-				public String _affected_parameter;
-				public String getAffectedParameter(){
-					return _affected_parameter;
+				public Rules(Input input, Parameter param) {
+					this.input = input;
+					this.param = param;
 				}
 				
-				«IF rules.right!==null» 
-				«ELSE»	
-					«IF rules.operator instanceof GreaterThan» «generateRuleGraterThan(rules)»
-					«ELSEIF rules.operator instanceof LessThan» «generateLessThan(rules)»
-					«ELSEIF rules.operator instanceof GreaterEqual»«generateGreaterEqual(rules)»
-					«ELSE» «generateLessEqual(rules)»
-					«ENDIF»
-				«ENDIF»
-				«IF rules.points!=0»public int _points;«ENDIF»
-				«IF rules.points!=0»public int getPoints() {
-									return _points;
-				}«ENDIF»
-			
-			«generateRuleConstructor(rules)»
+				
+				public String setupRules() {
+					
+					«generateInputBody(rules)»
+				}
 			}
 			
 		'''
 	}
-
-	def generateRuleConstructor(Rules rules) {
+	
+	def CharSequence generateInputBody(Rules rule) {
 		'''
-			public Rules(String left,String affected_parameter, int points){
-			     this._left = left;
-			     this._points = points;
-			     this._affected_parameter = affected_parameter;
-			 }
+		if ( «generateComparison(rule)» ) {
+			«IF rule.effect instanceof RulesConclude»
+			return decision.get«(rule.getEffect as RulesConclude).getDecision.toFirstUpper»()«ELSE»
+			param.set«(rule.getEffect as RulesChange).getAffected_parameter.toFirstUpper»(param.get«(rule.getEffect 
+				as RulesChange).getAffected_parameter.toFirstUpper» «IF (rule.effect 
+					as RulesChange).getPoints instanceof Subtract»- «ELSE»+ «ENDIF»«(rule.effect 
+						as RulesChange).getPoints.getPoints»)«ENDIF»;
+		}
+		
+		«IF rule.getNext !== null»«generateInputBody(rule.getNext)»«ENDIF»
+		
 		'''
-	}
-
-	def generateLessEqual(Rules rules) {
+	}	
+	
+	
+	def CharSequence generateComparison(Rules rule) {
 		'''
-			public boolean compare(){
-			        return «IF rules.operator!==null»
-			        					public boolean compare(){
-			        						return «rules.left»>=«rules.right»;
-			        						}
-			        «ENDIF»
-				}
-				
-				public boolean compare(Input input){
-				    	
-				    	   return input.value.name;
-				}
+		«IF rule.left instanceof RuleTypeInt»«(rule.getLeft as RuleTypeInt).getValue»
+		«ELSE»input.get«(rule.getLeft as RuleTypeID).getName.toFirstUpper»()«ENDIF»'''+
 		'''
-	}
-
-	def generateGreaterEqual(Rules rules) {
-		'''
-			public boolean compare(){
-					        return «rules.left»>=«rules.right»;
-					    }
-					
-			public boolean compare(Input input){
-					        return input.value.name;
-					    }
-		'''
-	}
-
-	def generateLessThan(Rules rules) {
-		'''
-			public boolean compare(){
-					        return «rules.left»<«rules.right»;
-					    }
-					
-			public boolean compare(Input input){
-					        return input.value.name > «rules.right»;
-					    }
-		'''
-	}
-
-	def generateRuleGraterThan(Rules rules) {
-		'''
-			public boolean compare(){
-			        return «rules.left»>«rules.right»;
-			    }
-			
-			    public boolean compare(Input input){
-			        return input.value.name;
-			    }
-		'''
+		«IF rule.getOperator !== null»«IF rule.getOperator instanceof GreaterThan»> «ELSEIF rule.getOperator instanceof LessThan»< «ELSEIF rule.getOperator instanceof GreaterEqual»>= «ELSEIF rule.getOperator instanceof LessEqual»<= «ENDIF»«IF rule.getRight instanceof RuleTypeInt»«(rule.getRight as RuleTypeInt).getValue»«ELSE»input.get«(rule.getRight as RuleTypeID).getName.toFirstUpper»()«ENDIF»«ENDIF»'''
 	}
 	
 	
@@ -456,31 +486,5 @@ public boolean get«input.value.name.toFirstUpper»() {
 		System::out.println("Dump of model:")
 		res.save(System.out,null)
 	}
-
-//	override void doGenerate(Resource resource, IFileSystemAccess2 fsa, IGeneratorContext context) {
-//
-//		val test = resource.allContents.
-//		
-//
-//	}
-//	
-//	
-//	def CharSequence generateInput(Input input) {
-//		var start = '''
-//		
-//		public class Input {
-//		
-//		    private «input.getValue.getType» «input.getValue.getName»;
-//		
-//		    public type get«input.getValue.getName»() {
-//		
-//		        return «input.getValue.getName»;
-//		
-//		    }''';
-//		    
-//		    start = start + '''test''';
-//		    
-//		return start;
-//	}
 	
 }
