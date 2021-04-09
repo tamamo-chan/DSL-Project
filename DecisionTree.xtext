@@ -56,15 +56,28 @@ Parameter:
 ;
 
 /*Rules:
-credit > 1000? good 50
-previous loans? reject
+if credit > 1000? sub 50 to good
+if previous loans? conclude reject
 loyal customer? good 5
 CEO? accept
 */
 
 Rules:
-	left=RuleType (operator=Operator right=RuleType)? "?" affected_parameter=ID (points=INT)? 
+	'if' left=RuleType (operator=Operator right=RuleType)? "?" effect=(RulesChange | RulesConclude) 
 	(next=Rules)?
+;
+
+RulesChange:
+	points=PointsOperator affected_parameter=ID
+;
+
+RulesConclude:
+	('decide' | 'conclude') decision=ID
+;
+
+
+PointsOperator:
+	{Subtract} 'sub'(points=INT)? 'from' |{Add} 'add' (points=INT)? 'to'
 ;
 
 Operator:
@@ -76,11 +89,10 @@ RuleType:
 ;
 
 Conclusion:
-	left=RuleType operator=Operator right=RuleType ":" decision=ID 
+	'if' left=RuleType operator=Operator right=RuleType ":" 'conclude' decision=ID 
 	(next=Conclusion)? | 
 	
-	ConclusionNested
-	(next=Conclusion)? |
+	ConclusionNested |
 	
 	ConclusionElse
 ;
@@ -90,7 +102,7 @@ ConclusionElse:
 ;
 
 ConclusionNested:
-	parent=ID "(" nested=Conclusion ")"
+	'if' parent=ID "(" nested=Conclusion ")"
 ;
 
 
