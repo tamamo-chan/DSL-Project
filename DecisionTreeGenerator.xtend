@@ -72,10 +72,10 @@ class DecisionTreeGenerator extends AbstractGenerator {
 			«generatePackage()»
 			
 			public class Main {
-				    
-				    «generateHandleBool()»
-				    
-				    «generateMainFunc(start)»
+				
+			    «generateHandleBool()»
+			    
+			    «generateMainFunc(start)»
 			}  
 		'''
 	}
@@ -88,38 +88,22 @@ class DecisionTreeGenerator extends AbstractGenerator {
 
 	def generateMainFunc(Start start) {
 		'''
-			public static void main(String[] args){
-			
-			
-				assert(args.length == «getNumInputs(start.getInput, 1)+""»);
-			
-			        «mainInput(start.getInput, 0)»
-			
-			
-			        Input input = new Input(«handleInputVariable(start.getInput)»);
-			
-			        Parameter param = new Parameter();
-					Decision acceptDecision = new Decision("«start.decision.text.findFirst[true]»");
-					
-			
-			        if (input.getCredit() > 1000) {
-			            param.setGood(param.getGood() + 55);
-			        }
-			
-			        if (input.getPrevious_loans()) {
-			            System.out.println("Reject");
-			            return new Decision("Reject");
-			        }
-			
-			
-			        if (good > 80) {
-			            return decision;
-			        } else if (bad > 20) {
-			            System.out.println("reject");
-			            return new Decision("Reject");
-			        }
-			
-			}
+public static void main(String[] args){
+
+
+	assert(args.length == «getNumInputs(start.getInput, 1)+""»);
+
+    «mainInput(start.getInput, 0)»
+
+
+    Input input = new Input(«handleInputVariable(start.getInput)»);
+    Conclusion conclusion = new Conclusion();
+    List<String> results = conclusion.begin(input);
+    
+    for (String s : results) {
+    	System.out.println(s);
+    }
+}
 		'''
 	}
 	
@@ -175,7 +159,7 @@ class DecisionTreeGenerator extends AbstractGenerator {
 			     } else {
 			         return false;
 			     }
-			 }
+			}
 		'''
 	}
 	
@@ -191,8 +175,9 @@ import java.util.List;
 public class Conclusion {
 	
 	Decision decision = new Decision();
+	Parameter param = new Parameter();
 	
-	public List<String> begin(Parameter param, Input input) {
+	public List<String> begin(Input input) {
 		
 		Rules rule = new Rules(input, param);
 		List<String> nested = new ArrayList<>();
@@ -377,7 +362,7 @@ public boolean get«input.value.name.toFirstUpper»() {
 	
 	
 	
-	def void generateDecisionFile(Decision decision, IFileSystemAccess2 fsa){
+		def void generateDecisionFile(Decision decision, IFileSystemAccess2 fsa){
 		fsa.generateFile("decisiontree/Decision.java",generateDecision(decision))
 	}
 	
@@ -388,41 +373,62 @@ public boolean get«input.value.name.toFirstUpper»() {
 		import java.util.List;
 		import java.util.ArrayList;
 		public class Decision {
-			public String _text;
-			«IF decision.nested!==null» «ELSE»public List<Decision> _nested; «ENDIF»
-			public Decision _next;
-			public Decision(String text){
-			        _text = text;
-			    }
-			public String getText() {
-			        return _text;
-			    }
 			
-			«IF decision.nested!==null» «ELSE»public List<Decision> getNested() {
-			        return _nested;
-			    }
-			«ENDIF»
-			    public Decision getNext() {
-			        return _next;
-			    } 
-		  public void setNext(Decision decision) {
-		        _next = decision;
-		    }
-		
-		    public void setNested(Decision decision) {
-		        if (_nested != null) {
-		            _nested.add(decision);
-		        } else {
-		            _nested = new ArrayList<Decision>();
-		        }
-		    }
-		
-		    public void setText(String value) {
-		        _text = value;
-		    }
-		
+			«IF decision.text!==null && decision.nested===null »«generateDecisionVariables(decision.text.get(0))» «ENDIF»
+			«IF decision.getNext!==null»«generateNextDecision(decision.getNext)» «ENDIF»
+			
+
 		}
 		'''
+	}
+	
+	def String generateNextDecision(Decision decision) {
+		'''
+		«IF decision.text!==null»«generateDecisionVariables(decision.text.get(0))»«ENDIF»
+		«IF decision.nested!==null»
+			private Nested _«decision.text.get(0)» = new Nested();
+					    
+			public Nested get«decision.text.get(0).toFirstUpper»() {
+				return this._«decision.text.get(0)»;
+			 }
+			    
+			public class Nested {
+				private String _«decision.text.get(0)» = "«decision.text.get(0)»";
+				
+				List<String> nested_values;
+				
+				public String get«decision.text.get(0).toFirstUpper»(){
+					return this._«decision.text.get(0)»;
+				}
+				
+				public Nested() {
+				nested_values = new ArrayList<>();
+			        	«generateNestedValues(decision.nested)»
+				
+				}
+			}
+					«ENDIF»
+		«IF decision.getNext!==null»«generateNextDecision(decision.getNext)» «ENDIF»
+		'''
+	}
+	
+	def String generateNestedValues(Decision decision) {
+		'''
+		 nested_values.add("«decision.text.get(0)»");
+		 «IF decision.getNext!==null»«generateNestedValues(decision.getNext)» «ENDIF»
+		'''
+	}
+	
+	def generateDecisionVariables(String s) {
+	'''
+	
+	 private String _«s» = "«s»";
+	    
+	    public String get«s.toFirstUpper»() {
+	        return this._«s»;
+	    }
+	  
+	'''
 	}
 	
 	
