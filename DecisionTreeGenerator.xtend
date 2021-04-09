@@ -71,6 +71,9 @@ class DecisionTreeGenerator extends AbstractGenerator {
 		'''
 			«generatePackage()»
 			
+			import java.util.ArrayList;
+			import java.util.List;
+			
 			public class Main {
 				
 			    «generateHandleBool()»
@@ -184,8 +187,8 @@ public class Conclusion {
 		
 		String response = rule.setupRules();
 		
-		if (reponse != null) {
-			nested.add(reponse);
+		if (response != null) {
+			nested.add(response);
 			return nested;
 		}
 	
@@ -360,7 +363,9 @@ public boolean get«input.value.name.toFirstUpper»() {
 «ENDIF»
 «IF input.next!==null»«generateClassVariables(input.next)»«ENDIF»'''}
 	
-def void generateDecisionFile(Decision decision, IFileSystemAccess2 fsa){
+	
+	
+		def void generateDecisionFile(Decision decision, IFileSystemAccess2 fsa){
 		fsa.generateFile("decisiontree/Decision.java",generateDecision(decision))
 	}
 	
@@ -375,42 +380,42 @@ def void generateDecisionFile(Decision decision, IFileSystemAccess2 fsa){
 			«IF decision.text!==null && decision.nested===null »«generateDecisionVariables(decision.text.get(0))» «ENDIF»
 			«IF decision.getNext!==null»«generateNextDecision(decision.getNext)» «ENDIF»
 			
-
 		}
 		'''
 	}
 	
 	def String generateNextDecision(Decision decision) {
-		'''
-		«IF decision.nested!==null»
-			private Nested _«decision.text.get(0)» = new Nested();
-					    
-			public Nested get«decision.text.get(0).toFirstUpper»() {
-						return this._«decision.text.get(0)»;
-					 }
-					    
-					public class Nested {
-					      	private String _«decision.text.get(0)» = "«decision.text.get(0)»";
-					      	
-					        List<String> nested_values;
-					        
-					        public String get«decision.text.get(0).toFirstUpper»(){
-					        	return this._«decision.text.get(0)»;
-					        }
-					        public List<String> getNested_values(){
-					                    return this.nested_values;
-					                } 
-					        
-					        public Nested() {
-					        	nested_values = new ArrayList<>();
-					        	«generateNestedValues(decision.nested)»
-					           
-					        }
-					    }
-					«ENDIF»
-		«IF decision.getNext!==null»«generateNextDecision(decision.getNext)» «ENDIF»
-		'''
-	}
+        '''
+        «IF decision.text!==null && decision.nested===null »«generateDecisionVariables(decision.text.get(0))» «ENDIF»
+        «IF decision.nested!==null»
+            private Nested «decision.text.get(0)» = new Nested();
+
+            public Nested get«decision.text.get(0).toFirstUpper»() {
+                return this.«decision.text.get(0)»;
+            }
+
+            public class Nested {
+                private String _«decision.text.get(0)» = "«decision.text.get(0)»";
+
+                List<String> nested_values;
+
+                public String get«decision.text.get(0).toFirstUpper»(){
+                    return this._«decision.text.get(0)»;
+                }
+                public List<String> getNested_values(){
+                            return this.nested_values;
+                        } 
+
+                public Nested() {
+                    nested_values = new ArrayList<>();
+                    «generateNestedValues(decision.nested)»
+
+                }
+            }
+                    «ENDIF»
+        «IF decision.getNext!==null»«generateNextDecision(decision.getNext)» «ENDIF»
+        '''
+    }
 	
 	def String generateNestedValues(Decision decision) {
 		'''
@@ -430,7 +435,7 @@ def void generateDecisionFile(Decision decision, IFileSystemAccess2 fsa){
 	  
 	'''
 	}
-		
+	
 	
 		def void generateRulesFile(Rules rules, IFileSystemAccess2 fsa) {
 		fsa.generateFile("decisiontree/Rules.java", generateRules(rules))
@@ -454,6 +459,8 @@ def void generateDecisionFile(Decision decision, IFileSystemAccess2 fsa){
 				public String setupRules() {
 					
 					«generateInputBody(rules)»
+					
+					return null;
 				}
 			}
 			
@@ -466,7 +473,7 @@ def void generateDecisionFile(Decision decision, IFileSystemAccess2 fsa){
 			«IF rule.effect instanceof RulesConclude»
 			return decision.get«(rule.getEffect as RulesConclude).getDecision.toFirstUpper»()«ELSE»
 			param.set«(rule.getEffect as RulesChange).getAffected_parameter.toFirstUpper»(param.get«(rule.getEffect 
-				as RulesChange).getAffected_parameter.toFirstUpper» «IF (rule.effect 
+				as RulesChange).getAffected_parameter.toFirstUpper»() «IF (rule.effect 
 					as RulesChange).getPoints instanceof Subtract»- «ELSE»+ «ENDIF»«(rule.effect 
 						as RulesChange).getPoints.getPoints»)«ENDIF»;
 		}
