@@ -85,7 +85,27 @@ Operator:
 ;
 
 RuleType:
-	{RuleTypeInt} value=INT | {RuleTypeID} name=ID
+	{RuleTypeID} name=ID | {RuleTypeExp} exp=Exp
+;
+
+Exp returns Expression:
+	Factor (('+' {Plus.left=current} | '-' {Minus.left=current} ) right=Factor)*
+;
+
+Factor returns Expression:
+	Primary (('*' {Mult.left=current} | '/' {Div.left=current} ) right=Primary)*
+;
+
+Primary returns Expression:
+	Number | Parenthesis 
+;
+
+Parenthesis returns Expression:
+	'(' Exp ')'
+;
+
+Number:
+	value=INT
 ;
 
 Conclusion:
@@ -104,24 +124,3 @@ ConclusionElse:
 ConclusionNested:
 	'if' parent=ID "(" nested=Conclusion ")"
 ;
-
-
-
-
-/*grammar: 
-
-Decisions: accept, reject, maybe(recommend_accept, recommend_reject, unsure)
-
-Input: int credit, bool loans, bool loyal_customer, bool CE
-
-Parameters:
-good = 0
-bad = 0
-
-
-Rules:
-credit > 1000? good 50
-previous loans? reject
-loyal customer? good 5
-CEO? accept
-*/
