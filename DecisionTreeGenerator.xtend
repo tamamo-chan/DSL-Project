@@ -16,7 +16,6 @@ import sdu.mmmi.tamamo.decisionTree.InputInt
 import sdu.mmmi.tamamo.decisionTree.InputString
 import sdu.mmmi.tamamo.decisionTree.Parameter
 import sdu.mmmi.tamamo.decisionTree.Rules
-import sdu.mmmi.tamamo.decisionTree.RuleTypeInt
 import sdu.mmmi.tamamo.decisionTree.GreaterThan
 import sdu.mmmi.tamamo.decisionTree.LessThan
 import sdu.mmmi.tamamo.decisionTree.GreaterEqual
@@ -30,6 +29,12 @@ import sdu.mmmi.tamamo.decisionTree.LessEqual
 import sdu.mmmi.tamamo.decisionTree.RulesConclude
 import sdu.mmmi.tamamo.decisionTree.RulesChange
 import sdu.mmmi.tamamo.decisionTree.Subtract
+import sdu.mmmi.tamamo.decisionTree.Plus
+import sdu.mmmi.tamamo.decisionTree.Minus
+import sdu.mmmi.tamamo.decisionTree.Mult
+import sdu.mmmi.tamamo.decisionTree.Div
+import sdu.mmmi.tamamo.decisionTree.Expression
+import sdu.mmmi.tamamo.decisionTree.RuleTypeExp
 
 /**
  * Generates code from your model files on save.
@@ -136,7 +141,7 @@ public static void main(String[] args){
 			'''
 			int «input.getValue.getName» = 0;
 			try {
-				credit = Integer.parseInt(args[«index+''»]);
+				«input.getValue.getName» = Integer.parseInt(args[«index+''»]);
 			}
 			catch (NumberFormatException nfe) {
 				System.out.println("The first argument must be an integer.");
@@ -263,13 +268,31 @@ if («generateComparison(conclusion)») {
 
 
 	def CharSequence generateComparison(Conclusion conclusion) {'''
-«IF conclusion.getLeft instanceof RuleTypeID»param.get«(conclusion.getLeft as RuleTypeID).getName.toFirstUpper»()«ELSE»«(conclusion.getLeft as RuleTypeInt).getValue»«ENDIF»'''+
-''' «conclusion.getOperator.getType» «IF conclusion.getRight instanceof RuleTypeID»param.get«(conclusion.getRight as RuleTypeID).getName.toFirstUpper»() «ELSE»«(conclusion.getRight as RuleTypeInt).getValue»«ENDIF»'''}
+«IF conclusion.getLeft instanceof RuleTypeID»param.get«(conclusion.getLeft as 
+	RuleTypeID).getName.toFirstUpper»()«ELSE»«(conclusion.getLeft as RuleTypeExp).getExp.compute»«ENDIF»'''+
+''' «conclusion.getOperator.getType» «IF conclusion.getRight instanceof 
+RuleTypeID»param.get«(conclusion.getRight as RuleTypeID).getName.toFirstUpper»() «ELSE»«(conclusion.getRight as 
+	RuleTypeExp).getExp.compute»«ENDIF»'''}
 
 
 
-
-
+	def static int compute(Expression math) { 
+			math.computeExp
+	//		math.exp.computeExpEnv(new HashMap<String,Integer>)
+		}
+		
+	// Normal style using xtext binding, requires a scope provider
+	def static int computeExp(Expression exp) {
+		switch exp {
+			Plus: exp.left.computeExp+exp.right.computeExp
+			Minus: exp.left.computeExp-exp.right.computeExp
+			Mult: exp.left.computeExp*exp.right.computeExp
+			Div: exp.left.computeExp/exp.right.computeExp
+			sdu.mmmi.tamamo.decisionTree.Number: exp.value
+			default: throw new Error("Internal error")
+		}
+	}	
+ 
 	
 	def void generateParameterFile(Parameter param, IFileSystemAccess2 fsa) {
 		fsa.generateFile("decisiontree/Parameter.java", generateParameter(param))
@@ -486,10 +509,12 @@ public boolean get«input.value.name.toFirstUpper»() {
 	
 	def CharSequence generateComparison(Rules rule) {
 		'''
-		«IF rule.left instanceof RuleTypeInt»«(rule.getLeft as RuleTypeInt).getValue»
-		«ELSE»input.get«(rule.getLeft as RuleTypeID).getName.toFirstUpper»()«ENDIF»'''+
-		'''
-		«IF rule.getOperator !== null»«IF rule.getOperator instanceof GreaterThan»> «ELSEIF rule.getOperator instanceof LessThan»< «ELSEIF rule.getOperator instanceof GreaterEqual»>= «ELSEIF rule.getOperator instanceof LessEqual»<= «ENDIF»«IF rule.getRight instanceof RuleTypeInt»«(rule.getRight as RuleTypeInt).getValue»«ELSE»input.get«(rule.getRight as RuleTypeID).getName.toFirstUpper»()«ENDIF»«ENDIF»'''
+		«IF rule.left instanceof RuleTypeExp»«(rule.getLeft as RuleTypeExp).getExp.compute» «ELSE»input.get«(rule.getLeft as 
+			RuleTypeID).getName.toFirstUpper»() «ENDIF»«IF rule.getOperator !== null»«IF rule.getOperator 
+		instanceof GreaterThan»> «ELSEIF rule.getOperator instanceof LessThan»< «ELSEIF rule.getOperator instanceof 
+		GreaterEqual»>= «ELSEIF rule.getOperator instanceof LessEqual»<= «ENDIF»«IF rule.getRight instanceof 
+		RuleTypeExp»«(rule.getRight as RuleTypeExp).getExp.compute»«ELSE»input.get«(rule.getRight as 
+			RuleTypeID).getName.toFirstUpper»()«ENDIF»«ENDIF»'''
 	}
 	
 	
