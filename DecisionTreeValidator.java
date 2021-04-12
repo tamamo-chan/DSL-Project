@@ -9,8 +9,8 @@ import org.eclipse.xtext.validation.Check;
 import sdu.mmmi.tamamo.decisionTree.DecisionTreePackage;
 import sdu.mmmi.tamamo.decisionTree.Input;
 import sdu.mmmi.tamamo.decisionTree.RuleType;
+import sdu.mmmi.tamamo.decisionTree.RuleTypeExp;
 import sdu.mmmi.tamamo.decisionTree.RuleTypeID;
-import sdu.mmmi.tamamo.decisionTree.RuleTypeInt;
 import sdu.mmmi.tamamo.decisionTree.Rules;
 import sdu.mmmi.tamamo.decisionTree.Start;
 
@@ -25,7 +25,7 @@ public class DecisionTreeValidator extends AbstractDecisionTreeValidator {
 	@Check
 	public void checkNoIntBool(Rules rule) {
 
-		if (rule.getLeft() instanceof RuleTypeInt) {
+		if (rule.getLeft() instanceof RuleTypeExp) {
 			if (rule.getRight() == null) {
 				error("Int cannot be the only parameter.", rule.eContainingFeature(), DecisionTreePackage.RULES__LEFT);
 			}
@@ -34,7 +34,7 @@ public class DecisionTreeValidator extends AbstractDecisionTreeValidator {
 
 	@Check
 	public void checkNotBothArgumentsInts(Rules rule) {
-		if (rule.getLeft() instanceof RuleTypeInt && rule.getRight() instanceof RuleTypeInt) {
+		if (rule.getLeft() instanceof RuleTypeExp && rule.getRight() instanceof RuleTypeExp) {
 			error("Please rewrite expression to an Input and an integer", rule.eContainingFeature(),
 					DecisionTreePackage.RULES__LEFT);
 		}
