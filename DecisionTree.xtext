@@ -30,15 +30,11 @@ Input:
 ;
 
 InputType:
-	InputInt | InputString | InputBool
+	InputInt | InputBool
 ;
 
 InputInt:
 	"int" name=ID
-;
-
-InputString:
-	"string" name=ID 
 ;
 
 InputBool:
